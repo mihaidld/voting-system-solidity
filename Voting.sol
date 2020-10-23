@@ -1,31 +1,43 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
-/*
 
+/**
+* @title A blockchain voting smart contract 
+* 
+* @notice Members need to register first with 0.1 ethers for 4 weeks or buy more time afterwards. 
+* Members can be promoted by to admin status by another admin. 
+* Admins can be demoted by an admin.
+* Admins can make proposals and warn members (if more than 2 warnings a member is blacklisted). 
+* All members can vote for proposals (0 -> Blank, 1 -> Yes, 2 -> No)
+* 
+@dev All function calls are currently implemented without side effects
 */
 contract Voting {
     
     // Variables de state
     
+    /// @dev address who collects ethers from registration fees initialized by constructor, who cannot be blacklisted and is the first member and admin for life
     address payable superAdmin;
     
+    /// @dev struct Member
     struct Member{
-         bool isAdmin;
-         uint warnings; //0,1,2
-         bool isBlacklisted; //false si warnings <2, true si warnings >=2; mapping ?
-         uint delayRegistration; //block.timestamp du paiement + 4 weeks pour chaque 0.1 ethers
+         bool isAdmin; // false if the member is not an admin, true is an admin
+         uint warnings; // 0 at registration, can be increased
+         bool isBlacklisted; //false at registration and as long as warnings < 2, true if warnings >=2
+         uint delayRegistration; // till when is the member registered following his payment
     }
     
+    /// @dev struct Proposal
     struct Proposal{
-        uint id; // id de la proposition, automatiquement cree
-        bool active; // proposition toujours active pour être votée, si maintenant < delay 
-        string question; // la proposition
-        string description; // une description de la proposition
-        uint counterForVotes; // nombre de votes `Yes` avec counter
-        uint counterAgainstVotes; // nombre de votes `No`
-        uint counterBlankVotes; // nombre de votes `Blank`
-        uint delay; // date à laquelle la proposition ne sera plus valide block.timestamp de creation + 1 weeks
-        mapping (address => bool) didVote; // mapping pour verifier si une addresse a deja vote pour cette proposition
+        uint id; // id of proposal
+        bool active; // proposal active for 1 week 
+        string question; // proposal question
+        string description; // proposal description
+        uint counterForVotes; // counter of votes `Yes`
+        uint counterAgainstVotes; // counter of votes `No`
+        uint counterBlankVotes; // ounter of votes `Blank`
+        uint delay; // till when the proposal is active
+        mapping (address => bool) didVote; // mapping to check that an address can not vote twice for same proposal id
     }
     
     mapping (address => Member) public members;
@@ -89,13 +101,11 @@ contract Voting {
         require (proposals[_id].didVote[msg.sender] == false, "member already voted for this proposal");
         if (_voteOption == Option.Blank) {
             proposals[_id].counterBlankVotes++;
-            
         } else if(_voteOption == Option.Yes) {
             proposals[_id].counterForVotes++;
-            
-        } else {
+        } else if(_voteOption == Option.No) {
             proposals[_id].counterAgainstVotes++;
-        }
+        } else revert("Invalid vote");
         proposals[_id].didVote[msg.sender] = true;
     }
     
