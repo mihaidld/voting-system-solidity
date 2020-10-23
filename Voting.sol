@@ -14,9 +14,9 @@ pragma solidity ^0.6.0;
 */
 contract Voting {
     
-    // Variables de state
+    // Variables of state
     
-    /// @dev address who collects ethers from registration fees initialized by constructor, who cannot be blacklisted and is the first member and admin for life
+    /// @dev address who collects ethers from registration fees
     address payable superAdmin;
     
     /// @dev struct Member
@@ -30,26 +30,32 @@ contract Voting {
     /// @dev struct Proposal
     struct Proposal{
         uint id; // id of proposal
-        bool active; // proposal active for 1 week 
         string question; // proposal question
         string description; // proposal description
         uint counterForVotes; // counter of votes `Yes`
         uint counterAgainstVotes; // counter of votes `No`
         uint counterBlankVotes; // ounter of votes `Blank`
-        uint delay; // till when the proposal is active
+        uint delay; // till when the proposal is active (proposal active for 1 week )
         mapping (address => bool) didVote; // mapping to check that an address can not vote twice for same proposal id
     }
     
+    /// @dev mapping from an address to a Member
     mapping (address => Member) public members;
     
+    /// @dev mapping from an id of proposal to a Proposal
     mapping (uint => Proposal) public proposals;
     
+    /// @dev counter for proposal id incremeneted by each proposal creation
     uint private counterIdProposal;
     
+    /// @dev instructions to vote
+    /// @notice instructions to vote : 0 -> Blank, 1 -> Yes, 2 -> No, other -> Invalid vote
     string public howToVote = "0 -> Blank, 1 -> Yes, 2 -> No";
-     
+    
+    /// @dev vote options: Yes, No, Blank using enum type
     enum Option { Blank, Yes, No } // variables de type Option prennent valeurs: 0 -> Option.Blank, 1 -> Option.Yes, 2 -> Option.No
     
+    /// @dev event for EVM log when payment for registration
     event Registration(
         address indexed _buyer,
         uint256 _amount_wei,
@@ -57,7 +63,7 @@ contract Voting {
         );
         
     // Constructor
-    
+    /// @dev address who collects ethers from registration fees initialized by constructor is the first member and admin for life (100 years)
     constructor(address payable _addr) public{
         superAdmin = _addr;
         members[_addr].isAdmin = true;
@@ -66,21 +72,25 @@ contract Voting {
 
     //Modifiers
     
+    /// @dev modifier to check if admin
     modifier onlyAdmin (){
             require (members[msg.sender].isAdmin == true, "only admin can call this function");
             _;
         }
-        
+    
+    /// @dev modifier to check if member is up-to-date with registration payments   
     modifier onlyActiveMembers (){
             require (members[msg.sender].delayRegistration >= block.timestamp, "only members who have paid the registration till present can call this function");
             _;
         }
-        
+    
+    /// @dev modifier to check if member is not blacklisted       
     modifier onlyWhitelistedMembers (){
             require (members[msg.sender].isBlacklisted == false, "only members not blacklisted can call this function");
             _;
         }
-        
+    
+    /// @dev modifier to check if member (even behinf with his payments, if delayRegistration value was increased in the past from 0)     
     modifier onlyMembers (){
             require (members[msg.sender].delayRegistration > 0, "only members can call this function");
             _;
@@ -88,13 +98,21 @@ contract Voting {
     
     // Functions
     
+    /// @dev only an admin, up-to-date with his payments and not blacklisted can create a proposal. The id is given by counterIdProposal variable and delay 1 week from creation date 
+    /// @notice proposal active for one week  
+    /// @param _question : short question of the proposal
+    /// @param _question : question of the proposal  
     function propose(string memory _question, string memory _description) public onlyAdmin onlyActiveMembers onlyWhitelistedMembers{
         counterIdProposal++;
         uint count = counterIdProposal;
-        proposals [count] = Proposal(count, true, _question, _description, 0, 0, 0, block.timestamp + 1 weeks );
+        proposals [count] = Proposal(count, _question, _description, 0, 0, 0, block.timestamp + 1 weeks );
         
     }
     
+    /// @dev only a member up-to-date with his payments and not blacklisted can vote for an active proposal and only once. 
+    /// @notice proposal active for one week, see voting instructions with howToVote  
+    /// @param _id : proposal id
+    /// @param _voteOption : option for voting
     function vote (uint _id, Option _voteOption ) public onlyActiveMembers onlyWhitelistedMembers{
         //verifier si votant n'est pas blacklisted et pas deja vote pour cette proposition
         require (proposals[_id].delay > block.timestamp, "proposal not active any more");
@@ -108,28 +126,40 @@ contract Voting {
         } else revert("Invalid vote");
         proposals[_id].didVote[msg.sender] = true;
     }
-    
+
+    /// @dev only an admin, up-to-date with his payments and not blacklisted can warn a member (even an another admin, but not the superAdmin). 
+    /// @notice after 2 warnings member is blacklisted and cannot vote anymore  
+    /// @param _addr : address of the member to be warned
     function warn (address _addr) public onlyAdmin onlyActiveMembers onlyWhitelistedMembers{
+        /// @dev address owner cannot be blacklisted
         require (_addr != superAdmin, "superAdmin cannot be warned");
         members[_addr].warnings +=1;
         if (members[_addr].warnings > 2){ members[_addr].isBlacklisted = true;}
     }
-    
+
+    /// @dev only an admin, up-to-date with his payments and not blacklisted can whitelist a member. Warnings counter restarts at 0 and isBlacklisted property set to false. 
+    /// @param _addr : address of the member to be whitelisted   
     function whitelist (address _addr) public onlyAdmin onlyActiveMembers onlyWhitelistedMembers{
         members[_addr].warnings = 0;
         members[_addr].isBlacklisted = false;
     }
-    
+
+    /// @dev only an admin, up-to-date with his payments and not blacklisted can promote a member to admin status (if the member is up-to-date with his payments). 
+    /// @param _addr : address of the member to be set admin
     function setAdmin (address _addr) public onlyAdmin onlyActiveMembers onlyWhitelistedMembers{
         require (members[_addr].delayRegistration >= block.timestamp, " member to be set admin is behind with registration payment");
         members[_addr].isAdmin = true;
         }
-        
+
+    /// @dev only an admin, up-to-date with his payments and not blacklisted can demote a member from admin status. 
+    /// @param _addr : address of the member to be demoted from admin
     function unsetAdmin (address _addr) public onlyAdmin onlyActiveMembers onlyWhitelistedMembers{
         members[_addr].isAdmin = false;
         }
     
-    //only for non-members
+    // only for non-members
+    /// @dev Register a new member, after checking that value is at least 0.1 ethers (if more that duration is proportiional with value. The ethers are transfered to superAdmin adress. An event is sent to EVM log.
+    /// @notice Enter a value for registration : : for each 0.1 ethers 4 extra weeks. Members please use buy function.    
     function register() public payable{
         require (members[msg.sender].delayRegistration == 0, "only for non members");
         require (msg. value >= 10**17, "not enough ethers");
@@ -140,7 +170,9 @@ contract Voting {
         emit Registration( msg.sender, msg.value, validity);
     }
     
-    //only for members (even inactive)
+    // only for members (even inactive)
+    /// @dev Buy more registration time a new member, after checking that value is at least 0.1 ethers (if more that duration is proportiional with value. The ethers are transfered to superAdmin adress. An event is sent to EVM log.
+    /// @notice Enter a value for registration : : for each 0.1 ethers 4 extra weeks. Non-members please use register function.  
     function buy() public payable onlyMembers onlyWhitelistedMembers{
         require (msg. value >= 10**17, "not enough ethers");
         uint nbOf4WeekPeriods  = msg.value / 10 ** 17;
