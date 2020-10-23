@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
+//contract deployed at 0xB08E9C6E6c77bD9d4eF7f86B5Eac782162062840 by Bob
 /**
 * @title A blockchain voting smart contract 
 * 
