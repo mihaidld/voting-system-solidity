@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
-//contract deployed at 0xB08E9C6E6c77bD9d4eF7f86B5Eac782162062840 by Bob
+//contract deployed at 0x3da4d3aa5166c03231Eef55a8dBEff2EaacCdF90 by Bob
 /**
 * @title A blockchain voting smart contract 
 * 
@@ -24,7 +24,7 @@ contract Voting {
     struct Member{
          bool isAdmin; // false if the member is not an admin, true is an admin
          uint warnings; // 0 at registration, can be increased
-         bool isBlacklisted; //false at registration and as long as warnings < 2, true if warnings >=2
+         bool isBlacklisted; //false at registration and as long as warnings <= 2, true if warnings >2
          uint delayRegistration; // till when is the member registered following his payment
     }
     
@@ -35,7 +35,7 @@ contract Voting {
         string description; // proposal description
         uint counterForVotes; // counter of votes `Yes`
         uint counterAgainstVotes; // counter of votes `No`
-        uint counterBlankVotes; // ounter of votes `Blank`
+        uint counterBlankVotes; // counter of votes `Blank`
         uint delay; // till when the proposal is active (proposal active for 1 week )
         mapping (address => bool) didVote; // mapping to check that an address can not vote twice for same proposal id
     }
@@ -91,7 +91,7 @@ contract Voting {
             _;
         }
     
-    /// @dev modifier to check if member (even behinf with his payments, if delayRegistration value was increased in the past from 0)     
+    /// @dev modifier to check if member (even behind with his payments, if delayRegistration value was increased in the past from 0)     
     modifier onlyMembers (){
             require (members[msg.sender].delayRegistration > 0, "only members can call this function");
             _;
@@ -178,8 +178,12 @@ contract Voting {
         require (msg. value >= 10**17, "not enough ethers");
         uint nbOf4WeekPeriods  = msg.value / 10 ** 17;
         uint validity = block.timestamp + nbOf4WeekPeriods * 4 weeks;
-        members[msg.sender].delayRegistration = validity;
+        if (members[msg.sender].delayRegistration < block.timestamp){
+            members[msg.sender].delayRegistration = validity;
+        } else {
+            members[msg.sender].delayRegistration += nbOf4WeekPeriods * 4 weeks;
+        }
         superAdmin.transfer(msg.value);
-        emit Registration( msg.sender, msg.value, validity);
+        emit Registration( msg.sender, msg.value, members[msg.sender].delayRegistration);
         }
 }
