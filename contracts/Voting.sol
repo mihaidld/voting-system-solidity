@@ -5,7 +5,7 @@ pragma solidity ^0.6.0;
 /**
 * @title A blockchain voting smart contract 
 * 
-* @notice Members need to register first with 0.1 ethers for 4 weeks or buy more time afterwards. 
+* @notice Members need to register first with 0.1 ether for 4 weeks or buy more time afterwards.   
 * Members can be promoted by to admin status by another admin. 
 * Admins can be demoted by an admin.
 * Admins can make proposals and warn members (if more than 2 warnings a member is blacklisted). 
@@ -64,7 +64,7 @@ contract Voting {
         );
         
     // Constructor
-    /// @dev address who collects ethers from registration fees initialized by constructor is the first member and admin for life (100 years)
+    /// @dev address _addr who collects ethers from registration fees initialized by constructor is the first member and admin for life (100 years)
     constructor(address payable _addr) public{
         superAdmin = _addr;
         members[_addr].isAdmin = true;
@@ -100,7 +100,7 @@ contract Voting {
     // Functions
     
     /// @dev only an admin, up-to-date with his payments and not blacklisted can create a proposal. The id is given by counterIdProposal variable and delay 1 week from creation date 
-    /// @notice proposal active for one week  
+    /// @notice a proposal is active for one week  
     /// @param _question : short question of the proposal
     /// @param _question : question of the proposal  
     function propose(string memory _question, string memory _description) public onlyAdmin onlyActiveMembers onlyWhitelistedMembers{
@@ -111,7 +111,7 @@ contract Voting {
     }
     
     /// @dev only a member up-to-date with his payments and not blacklisted can vote for an active proposal and only once. 
-    /// @notice proposal active for one week, see voting instructions with howToVote  
+    /// @notice a proposal active for one week, check voting instructions with howToVote  
     /// @param _id : proposal id
     /// @param _voteOption : option for voting
     function vote (uint _id, Option _voteOption ) public onlyActiveMembers onlyWhitelistedMembers{
@@ -159,8 +159,8 @@ contract Voting {
         }
     
     // only for non-members
-    /// @dev Register a new member, after checking that value is at least 0.1 ethers (if more that duration is proportiional with value. The ethers are transfered to superAdmin adress. An event is sent to EVM log.
-    /// @notice Enter a value for registration : : for each 0.1 ethers 4 extra weeks. Members please use buy function.    
+    /// @dev Register a new member, after checking that value is at least 0.1 ether (if more that duration is proportiional with value. The ethers are transfered to superAdmin adress. An event is sent to EVM log.
+    /// @notice Enter a value for registration : : for each 0.1 ether 4 extra weeks. Members please use buy function.    
     function register() public payable{
         require (members[msg.sender].delayRegistration == 0, "only for non members");
         require (msg. value >= 10**17, "not enough ethers");
@@ -172,7 +172,7 @@ contract Voting {
     }
     
     // only for members (even inactive)
-    /// @dev Buy more registration time a new member, after checking that value is at least 0.1 ethers (if more that duration is proportiional with value. The ethers are transfered to superAdmin adress. An event is sent to EVM log.
+    /// @dev Buy more registration time for an already member, after checking that value is at least 0.1 ether (if more that duration is proportional with value. The ethers are transfered to superAdmin adress. An event is sent to EVM log.
     /// @notice Enter a value for registration : : for each 0.1 ethers 4 extra weeks. Non-members please use register function.  
     function buy() public payable onlyMembers onlyWhitelistedMembers{
         require (msg. value >= 10**17, "not enough ethers");

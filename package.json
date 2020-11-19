@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "solidity-docgen": "^0.5.9"
+  },
+  "name": "voting",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/mihaidld/voting-system-solidity.git",
+  "author": "mihaidld <mihaidoldur@gmail.com>",
+  "license": "MIT"
+}
